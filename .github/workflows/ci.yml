@@ -1,0 +1,55 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          uv sync --dev
+
+      - name: Ruff Code Quality & Lint
+        run: |
+          uv run ruff check .
+
+      - name: Run Test Suite (Units, Safety, Transport Security)
+        run: |
+          uv run pytest tests/test_units.py tests/test_safety.py tests/test_transport_security.py -v
+
+  docker-validate:
+    name: Docker Stack Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
